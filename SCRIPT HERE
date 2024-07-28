@@ -1,0 +1,166 @@
+local allowedUserIds = {
+    12345678, -- Replace with actual UserId
+    87654321, -- Replace with actual UserId
+    -- Add more UserIds as needed
+}
+
+local player = game.Players.LocalPlayer
+local userId = player.UserId
+
+-- Check if the player is allowed to use this script
+local isAllowed = false
+for _, id in ipairs(allowedUserIds) do
+    if userId == id then
+        isAllowed = true
+        break
+    end
+end
+
+if not isAllowed then
+    return -- Stop executing the script if the player is not allowed
+end
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "AdminPanelGUI"
+
+local function makeDraggable(frame)
+    local dragging
+    local dragInput
+    local dragStart
+    local startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+local toggleButton = Instance.new("TextButton", screenGui)
+toggleButton.Size = UDim2.new(0, 100, 0, 50)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.Text = "Minimize"
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+toggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -150, 0, 70)
+mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+mainFrame.BackgroundTransparency = 0.5
+mainFrame.Visible = true
+
+makeDraggable(mainFrame)
+
+local titleLabel = Instance.new("TextLabel", mainFrame)
+titleLabel.Size = UDim2.new(1, 0, 0, 50)
+titleLabel.Text = "Admin Panel GUI"
+titleLabel.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+
+local nameInput = Instance.new("TextBox", mainFrame)
+nameInput.Size = UDim2.new(0.8, 0, 0, 40)
+nameInput.Position = UDim2.new(0.1, 0, 0, 60)
+nameInput.PlaceholderText = "Enter Player Name"
+nameInput.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+nameInput.TextColor3 = Color3.fromRGB(0, 0, 0)
+nameInput.TextScaled = true
+
+local actions = {
+    Flight = function(player)
+        local flying = false
+        local mouse = player:GetMouse()
+        local torso = player.Character:WaitForChild("Torso")
+        local bv = Instance.new("BodyVelocity", torso)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.MaxForce = Vector3.new(0, 0, 0)
+        local bg = Instance.new("BodyGyro", torso)
+        bg.MaxTorque = Vector3.new(0, 0, 0)
+        bg.P = 9e4
+
+        local function startFlying()
+            flying = true
+            bv.MaxForce = Vector3.new(1e4, 1e4, 1e4)
+            bg.MaxTorque = Vector3.new(1e4, 1e4, 1e4)
+            while flying do
+                local dir = mouse.Hit.p - torso.Position
+                bv.Velocity = dir.unit * 50
+                bg.CFrame = CFrame.new(torso.Position, mouse.Hit.p)
+                wait()
+            end
+        end
+
+        local function stopFlying()
+            flying = false
+            bv.MaxForce = Vector3.new(0, 0, 0)
+            bg.MaxTorque = Vector3.new(0, 0, 0)
+        end
+
+        mouse.KeyDown:Connect(function(key)
+            if key == "e" then
+                if flying then
+                    stopFlying()
+                else
+                    startFlying()
+                end
+            end
+        end)
+    end,
+    Kick = function(player)
+        player:Kick("You have been kicked from the game.")
+    end,
+    Rank = function(player)
+        -- Custom rank change logic here
+        -- Example: player.Team = game.Teams["Admin"]
+    end
+}
+
+local buttonY = 110
+for actionName, actionFunc in pairs(actions) do
+    local button = Instance.new("TextButton", mainFrame)
+    button.Size = UDim2.new(0.8, 0, 0, 50)
+    button.Position = UDim2.new(0.1, 0, 0, buttonY)
+    button.Text = actionName
+    button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    button.TextColor3 = Color3.fromRGB(0, 0, 0)
+    button.TextScaled = true
+    button.MouseButton1Click:Connect(function()
+        local targetPlayer = game.Players:FindFirstChild(nameInput.Text)
+        if targetPlayer and targetPlayer ~= player then
+            actionFunc(targetPlayer)
+        end
+    end)
+    buttonY = buttonY + 60
+end
+
+toggleButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+    toggleButton.Text = mainFrame.Visible and "Minimize" or "Maximize"
+end)
